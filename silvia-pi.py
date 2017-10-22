@@ -9,13 +9,13 @@ class EspressoTemperatureControl():
     self.pid = pid
 
   def main(self):
-    self.update_temperature(self)
-    self.pid_loop(self)
+    self.update_temperature()
+    self.pid_loop()
 
   def update_temperature(self):
     import  threading
 
-    current_temp = self.sensor.tempC();
+    current_temp = self.sensor.readTempC();
     self.state['tempf'] = (9.0 / 5.0) * current_temp + 32
     threading.Timer(.5, self.update_temperature).start()
 
@@ -159,6 +159,4 @@ if __name__ == '__main__':
   espressoTemperatureController = EspressoTemperatureControl(pidstate, sensor, heaterController, pid)
   espressoTemperatureController.main()
 
-  r = Process(target=rest_server,args=(pidstate))
-  r.daemon = True
-  r.start()
+  rest_server(pidstate)
