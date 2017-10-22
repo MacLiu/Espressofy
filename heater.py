@@ -2,9 +2,6 @@ import time
 from multiprocessing import Process, Value
 import RPi.GPIO as GPIO
 
-HEAT_PIN_ON = 1;
-HEAT_PIN_OFF = 0;
-
 class HeaterController:
 
     def __init__(self, pinNum):
@@ -19,9 +16,9 @@ class HeaterController:
 
     def flickerPin(self, onTime, offTime, pin):
         while not self.stop:
-            GPIO.output(pin, HEAT_PIN_ON)
+            GPIO.output(pin, 1)
             time.sleep(onTime.value)
-            GPIO.output(pin, HEAT_PIN_OFF)
+            GPIO.output(pin, 0)
             time.sleep(offTime.value)
 
     def controllerUpdate(self, dutyCycle, f):

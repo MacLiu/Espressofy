@@ -1,51 +1,13 @@
 #!/usr/bin/python
 
-def he_control_loop(dummy,state):
-  from time import sleep
-  from datetime import datetime, timedelta
-  import RPi.GPIO as GPIO
-  import config as conf
+def update_temperature(state, sensor):
+  import  threading
 
-  GPIO.setmode(GPIO.BCM)
-  GPIO.setup(conf.he_pin, GPIO.OUT)
-  GPIO.output(conf.he_pin,0)
+  current_temp = sensor.tempC();
+  state['tempf'] = (9.0 / 5.0) * current_temp + 32
+  threading.Timer(.5, update_temperature(state, sensor)).start()
 
-  heating = False
-
-  try:
-    while True:
-      if state['snoozeon'] == True :
-        now = datetime.now()
-        dt = datetime.strptime(state['snooze'],'%H:%M')
-        if dt.hour == now.hour and dt.minute == now.minute :
-          state['snoozeon'] = False
-
-      avgpid = state['avgpid']
-
-      if state['snoozeon']:
-        state['heating'] = False
-        GPIO.output(conf.he_pin,0)
-        sleep(1)
-      else:
-        state['heating'] = True
-        GPIO.output(conf.he_pin,1)
-        sleep((avgpid/100.) * 1.2)
-        GPIO.output(conf.he_pin,0)
-        sleep(1.2-(avgpid/100.))
-        state['heating'] = False
-
-  finally:
-    GPIO.output(conf.he_pin,0)
-    GPIO.cleanup()
-
-def pid_loop(dummy,state):
-  import sys
-  from time import sleep, time
-  from math import isnan
-  from pid import PID
-  import Adafruit_GPIO.SPI as SPI
-  import Adafruit_MAX31855.MAX31855 as MAX31855
-  import config as conf
+def pid_loop(dummy, state, heaterController, pid):
 
   def c_to_f(c):
     return c * 9.0 / 5.0 + 32.0
@@ -53,61 +15,26 @@ def pid_loop(dummy,state):
   def f_to_c(f):
     return (f - 32) * (5.0 / 9.0)
 
-  sensor = MAX31855.MAX31855(spi=SPI.SpiDev(conf.spi_port, conf.spi_dev))
+  while True : # Loops 10x/second
+    tempf = state['tempf']
+    tempc = f_to_c(tempf);
 
-  pid = PID(conf.Pc,conf.Ic,conf.Dc)
-  pid.setSetPoint(f_to_c(state['settemp']))
+    pid_output = pid.update(float(tempc))
+    temp_pid_output = pid_output
 
-  nanct=0
-  i=0
-  j=0
-  pidhist = [0.,0.,0.,0.,0.,0.,0.,0.,0.,0.]
-  avgpid = 0.
-  temphist = [0.,0.,0.,0.,0.]
-  avgtemp = 0.
-  lastsettemp = state['settemp']
-  lasttime = time()
-  sleeptime = 0
-  iscold = True
-  iswarm = False
-  lastcold = 0
-  lastwarm = 0
+    if temp_pid_output > 100:
+      temp_pid_output = 100
+    elif temp_pid_output < 0:
+      temp_pid_output = 0
 
-  try:
-    while True : # Loops 10x/second
-      tempc = sensor.readTempC()
-      if isnan(tempc) :
-        nanct += 1
-        if nanct > 100000 :
-          sys.exit
-        continue
-      else:
-        nanct = 0
+    state['avgpid'] = pid_output
+    state['pidval'] = temp_pid_output
+    print('Updating PID with: ' + str(state['avgpid']))
+    print('PID Output:        ' + str(pid_output))
+    print('PID Output Fixed: ' + str(int(temp_pid_output)))
+    heaterController.controllerUpdate(int(temp_pid_output), 0.8333)
 
-      tempf = c_to_f(tempc)
-
-      pid_output = pid.update(float(tempc))
-      temp_pid_output = pid_output
-
-      if temp_pid_output > 100:
-        temp_pid_output = 100
-      elif temp_pid_output < 0:
-        temp_pid_output = 0
-
-      state['i'] = i
-      state['tempf'] = round(tempf,2)
-      state['avgtemp'] = round(tempf,2)
-      state['pidval'] = round(pid_output,2)
-      state['avgpid'] = round(int(temp_pid_output),2)
-      state['pterm'] = round(conf.Pc,2)
-      state['iterm'] = round(conf.Ic,2)
-      state['dterm'] = round(conf.Dc,2)
-      state['iscold'] = iscold;
-
-      print state;
-      i += 1
-  finally:
-    pid.clear
+    threading.Timer(0.4266666, pid_loop(1,state,heaterController)).start()
 
 def rest_server(dummy,state):
   from bottle import route, run, get, post, request, static_file, abort
@@ -115,6 +42,7 @@ def rest_server(dummy,state):
   from datetime import datetime
   import config as conf
   import os
+
 
   basedir = os.path.dirname(__file__)
   wwwdir = basedir+'/www/'
@@ -189,9 +117,21 @@ def rest_server(dummy,state):
 
 if __name__ == '__main__':
   from multiprocessing import Process, Manager
-  from time import sleep
-  from urllib2 import urlopen
   import config as conf
+  import threading
+  import RPi as GPIO
+  from pid import PID
+  import Adafruit_MAX31855.MAX31855 as MAX31855
+  import Adafruit_GPIO.SPI as SPI
+  from heater import HeaterController
+
+  GPIO.setmode(GPIO.BOARD)
+  GPIO.setup(conf.he_pin, GPIO.OUT)
+  GPIO.output(conf.he_pin, 0)
+
+  sensor = MAX31855.MAX31855(spi=SPI.SpiDev(conf.spi_port, conf.spi_dev))
+  heaterController = HeaterController(conf.he_pin)
+  pid = PID(conf.Pc, conf.Ic, conf.Dc)
 
   manager = Manager()
   pidstate = manager.dict()
@@ -201,55 +141,12 @@ if __name__ == '__main__':
   pidstate['settemp'] = conf.set_temp
   pidstate['avgpid'] = 0.
 
-  p = Process(target=pid_loop,args=(1,pidstate))
-  p.daemon = True
-  p.start()
+  pid = PID(conf.Pc, conf.Ic, conf.Dc)
+  pid.setSetPoint((pidstate['settemp'] - 32) * 5.0 / 9.0)
 
-  h = Process(target=he_control_loop,args=(1,pidstate))
-  h.daemon = True
-  h.start()
+  pid_loop(1, pidstate, heaterController, pid)
+  update_temperature(pidstate, sensor)
 
   r = Process(target=rest_server,args=(1,pidstate))
   r.daemon = True
   r.start()
-
-  #Start Watchdog loop
-  piderr = 0
-  weberr = 0
-  weberrflag = 0
-  urlhc = 'http://localhost:'+str(conf.port)+'/healthcheck'
-
-  lasti = pidstate['i']
-  sleep(1)
-
-  while p.is_alive() and h.is_alive() and r.is_alive():
-    curi = pidstate['i']
-    if curi == lasti :
-      piderr = piderr + 1
-    else :
-      piderr = 0
-
-    lasti = curi
-
-    if piderr > 9 :
-      print 'ERROR IN PID THREAD, RESTARTING'
-      p.terminate()
-
-    try:
-      hc = urlopen(urlhc,timeout=2)
-    except:
-      weberrflag = 1
-    else:
-      if hc.getcode() != 200 :
-        weberrflag = 1
-
-    if weberrflag != 0 :
-      weberr = weberr + 1
-
-    if weberr > 9 :
-      print 'ERROR IN WEB SERVER THREAD, RESTARTING'
-      r.terminate()
-
-    weberrflag = 0
-
-    sleep(1)
