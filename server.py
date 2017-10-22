@@ -150,13 +150,14 @@ class EspressoTemperatureControl():
         @get('/allstats')
         def allstats():
             import config as conf
-            return str({'settemp': celcius_to_fahrenheit(self..setTemp),
-                        'autorun': espressoTemperatureControl.auto_run,
-                        'tempf': celcius_to_fahrenheit(self..boilerTemp),
-                        'pterm': conf.Pc,
-                        'iterm': conf.Ic,
-                        'dterm': conf.Dc,
-                        'avgpid': self.pid_output})
+            all_stat = {'settemp': celcius_to_fahrenheit(self..setTemp),
+             'autorun': espressoTemperatureControl.auto_run,
+             'tempf': celcius_to_fahrenheit(self..boilerTemp),
+             'pterm': conf.Pc,
+             'iterm': conf.Ic,
+             'dterm': conf.Dc,
+             'avgpid': self.pid_output}
+            return all_stat
 
         @route('/restart')
         def restart():
