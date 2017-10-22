@@ -31,6 +31,7 @@ class EspressoTemperatureControl():
 
         self.update_temperature()
         self.start_pid()
+        self.rest_server()
 
     def start_pid(self):
         import threading
@@ -87,8 +88,90 @@ class EspressoTemperatureControl():
     def time_hash(self, hour, min):
         return hour * 1000 + min
 
+    def rest_server(self):
+        import datetime
+        import config as conf
+        from bottle import route, run, get, post, request, static_file, abort
+        from datetime import datetime
+        import os
 
-espressoTemperatureControl = EspressoTemperatureControl()
+        basedir = os.path.dirname(__file__)
+        wwwdir = basedir + '/www/'
+
+        @route('/')
+        def docroot():
+            return static_file('index.html', wwwdir)
+
+        @route('/<filepath:path>')
+        def servfile(filepath):
+            return static_file(filepath, wwwdir)
+
+        @route('/curtemp')
+        def curtemp():
+            temperature = celcius_to_fahrenheit(self.boilerTemp)
+            return str(temperature)
+
+        @get('/settemp')
+        def settemp():
+            temperature = celcius_to_fahrenheit(self.setTemp)
+            return str(temperature)
+
+        @post('/settemp')
+        def post_settemp():
+            try:
+                settemp = float(request.forms.get('settemp'))
+                if settemp >= 160 and settemp <= 280:
+                    self.setTemp = fahrenheit_to_celcius(settemp)
+                    return str(settemp)
+                else:
+                    abort(400, 'Set temp out of range 200-260.')
+            except:
+                abort(400, 'Invalid number for set temp.')
+
+        @get('/snooze')
+        def get_snooze():
+            return str(self.auto_run)
+
+        @post('/snooze')
+        def post_snooze():
+            snooze = request.forms.get('snooze')
+            try:
+                datetime.strptime(snooze, '%H:%M')
+            except:
+                abort(400, 'Invalid time format.')
+            espressoTemperatureControl.auto_run = True
+            return str(self.auto_run)
+
+        @post('/resetsnooze')
+        def reset_snooze():
+            self.auto_run = False
+            return True
+
+        @get('/allstats')
+        def allstats():
+            import config as conf
+            return str({'settemp': celcius_to_fahrenheit(self..setTemp),
+                        'autorun': espressoTemperatureControl.auto_run,
+                        'tempf': celcius_to_fahrenheit(self..boilerTemp),
+                        'pterm': conf.Pc,
+                        'iterm': conf.Ic,
+                        'dterm': conf.Dc,
+                        'avgpid': self.pid_output})
+
+        @route('/restart')
+        def restart():
+            return '';
+
+        @route('/shutdown')
+        def shutdown():
+            return '';
+
+        @get('/healthcheck')
+        def healthcheck():
+            return 'OK'
+
+        run(host='0.0.0.0', port=conf.port, server='cheroot')
+        threading.Timer(.1, self.rest_server).start()
 
 
 def fahrenheit_to_celcius(temperature):
@@ -97,89 +180,6 @@ def fahrenheit_to_celcius(temperature):
 def celcius_to_fahrenheit(temperature):
     return (9.0 / 5.0) * float(float(temperature) + 32)
 
-def rest_server():
-    import datetime
-    import config as conf
-    from bottle import route, run, get, post, request, static_file, abort
-    from datetime import datetime
-    import os
-
-    basedir = os.path.dirname(__file__)
-    wwwdir = basedir+'/www/'
-
-    @route('/')
-    def docroot():
-        return static_file('index.html',wwwdir)
-
-    @route('/<filepath:path>')
-    def servfile(filepath):
-        return static_file(filepath,wwwdir)
-
-    @route('/curtemp')
-    def curtemp():
-        temperature = celcius_to_fahrenheit(espressoTemperatureControl.boilerTemp)
-        return str(temperature)
-
-    @get('/settemp')
-    def settemp():
-        temperature = celcius_to_fahrenheit(espressoTemperatureControl.setTemp)
-        return str(temperature)
-
-    @post('/settemp')
-    def post_settemp():
-        try:
-          settemp = float(request.forms.get('settemp'))
-          if settemp >= 160 and settemp <= 280 :
-            espressoTemperatureControl.setTemp = fahrenheit_to_celcius(settemp)
-            return str(settemp)
-          else:
-            abort(400,'Set temp out of range 200-260.')
-        except:
-          abort(400,'Invalid number for set temp.')
-
-    @get('/snooze')
-    def get_snooze():
-        return str(espressoTemperatureControl.auto_run)
-
-    @post('/snooze')
-    def post_snooze():
-        snooze = request.forms.get('snooze')
-        try:
-          datetime.strptime(snooze,'%H:%M')
-        except:
-          abort(400,'Invalid time format.')
-        espressoTemperatureControl.auto_run = True
-        return str(espressoTemperatureControl.auto_run)
-
-    @post('/resetsnooze')
-    def reset_snooze():
-        espressoTemperatureControl.auto_run = False
-        return True
-
-    @get('/allstats')
-    def allstats():
-        import config as conf
-        return str({'settemp' : celcius_to_fahrenheit(espressoTemperatureControl.setTemp),
-                'autorun' : espressoTemperatureControl.auto_run,
-                'tempf' : celcius_to_fahrenheit(espressoTemperatureControl.boilerTemp),
-                'pterm' : conf.Pc,
-                'iterm' : conf.Ic,
-                'dterm' : conf.Dc,
-                'avgpid' : espressoTemperatureControl.pid_output})
-
-    @route('/restart')
-    def restart():
-        return '';
-
-    @route('/shutdown')
-    def shutdown():
-        return '';
-
-    @get('/healthcheck')
-    def healthcheck():
-        return 'OK'
-
-    run(host='0.0.0.0',port=conf.port,server='cheroot')
 
 if __name__ == "__main__":
     import threading
@@ -191,9 +191,6 @@ if __name__ == "__main__":
 
     from heater import HeaterController
     from pid import PID
-    from multiprocessing import Process
 
+    espressoTemperatureControl = EspressoTemperatureControl()
     espressoTemperatureControl.main()
-    r = Process(target=rest_server, args=())
-    r.daemon = True
-    r.start()
