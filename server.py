@@ -156,6 +156,7 @@ class EspressoTemperatureControl():
              'pterm': conf.Pc,
              'iterm': conf.Ic,
              'dterm': conf.Dc,
+             'pidval' : self.pid_output,
              'avgpid': self.pid_output}
             return all_stat
 
@@ -172,7 +173,7 @@ class EspressoTemperatureControl():
             return 'OK'
 
         run(host='0.0.0.0', port=conf.port, server='cheroot')
-        threading.Timer(.1, self.rest_server).start()
+        threading.Timer(.8, self.rest_server).start()
 
 
 def fahrenheit_to_celcius(temperature):
