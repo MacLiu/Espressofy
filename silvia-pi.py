@@ -105,6 +105,7 @@ def pid_loop(dummy,state):
       state['iscold'] = iscold;
 
       print state;
+      i += 1
   finally:
     pid.clear
 
@@ -191,7 +192,6 @@ if __name__ == '__main__':
   from time import sleep
   from urllib2 import urlopen
   import config as conf
-  import threading
 
   manager = Manager()
   pidstate = manager.dict()
@@ -201,12 +201,10 @@ if __name__ == '__main__':
   pidstate['settemp'] = conf.set_temp
   pidstate['avgpid'] = 0.
 
-  threading.Timer(.4666666, pid_loop(1, pidstate)).start();
+  p = Process(target=pid_loop,args=(1,pidstate))
+  p.daemon = True
+  p.start()
 
-  # p = Process(target=pid_loop,args=(1,pidstate))
-  # p.daemon = True
-  # p.start()
-  #
   h = Process(target=he_control_loop,args=(1,pidstate))
   h.daemon = True
   h.start()
