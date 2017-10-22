@@ -150,14 +150,23 @@ class EspressoTemperatureControl():
         @get('/allstats')
         def allstats():
             import config as conf
+
+            pid_output = self.pid_output
+            pid_average = pid_output
+
+            if pid_average > 100:
+                pid_average = 100
+            elif pid_average < 0:
+                pid_average = 0;
+
             all_stat = {'settemp': celcius_to_fahrenheit(self.setTemp),
              'autorun': espressoTemperatureControl.auto_run,
              'tempf': celcius_to_fahrenheit(self.boilerTemp),
              'pterm': conf.Pc,
              'iterm': conf.Ic,
              'dterm': conf.Dc,
-             'pidval' : self.pid_output,
-             'avgpid': self.pid_output}
+             'pidval' : pid_output,
+             'avgpid': pid_average}
             return all_stat
 
         @route('/restart')
