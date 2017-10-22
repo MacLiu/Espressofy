@@ -180,7 +180,7 @@ def fahrenheit_to_celcius(temperature):
     return float(float(temperature) - 32) * (5.0 / 9.0)
 
 def celcius_to_fahrenheit(temperature):
-    return (9.0 / 5.0) * float(float(temperature) + 32)
+    return (9.0 / 5.0) * float(temperature) + 32
 
 
 if __name__ == "__main__":
