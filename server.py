@@ -1,6 +1,6 @@
 import threading
 import datetime
-
+import config as conf
 import Adafruit_GPIO.SPI as SPI
 import Adafruit_MAX31855.MAX31855 as MAX31855
 import RPi.GPIO as GPIO
@@ -103,10 +103,10 @@ espressoTemperatureControl = EspressoTemperatureControl()
 
 
 def fahrenheit_to_celcius(temperature):
-    return (temperature - 32) * (5.0 / 9.0)
+    return float(float(temperature) - 32) * (5.0 / 9.0)
 
 def celcius_to_fahrenheit(temperature):
-    return (9.0 / 5.0) * temperature + 32
+    return (9.0 / 5.0) * float(float(temperature) + 32)
 
 def rest_server():
     from bottle import route, run, get, post, request, static_file, abort

@@ -1,0 +1,22 @@
+/root/silvia-pi/server.py: 1: /root/silvia-pi/server.py: import: not found
+/root/silvia-pi/server.py: 2: /root/silvia-pi/server.py: import: not found
+/root/silvia-pi/server.py: 3: /root/silvia-pi/server.py: import: not found
+/root/silvia-pi/server.py: 4: /root/silvia-pi/server.py: import: not found
+/root/silvia-pi/server.py: 5: /root/silvia-pi/server.py: import: not found
+/root/silvia-pi/server.py: 6: /root/silvia-pi/server.py: import: not found
+from: can't read /var/mail/heater
+from: can't read /var/mail/pid
+from: can't read /var/mail/multiprocessing
+/root/silvia-pi/server.py: 12: /root/silvia-pi/server.py: HEATER_PIN: not found
+/root/silvia-pi/server.py: 14: /root/silvia-pi/server.py: P_VALUE: not found
+/root/silvia-pi/server.py: 15: /root/silvia-pi/server.py: I_VALUE: not found
+/root/silvia-pi/server.py: 16: /root/silvia-pi/server.py: D_VALUE: not found
+/root/silvia-pi/server.py: 18: /root/silvia-pi/server.py: INITIAL_TEMPERATURE: not found
+/root/silvia-pi/server.py: 20: /root/silvia-pi/server.py: MAX_TEMPERATURE: not found
+/root/silvia-pi/server.py: 21: /root/silvia-pi/server.py: MIN_TEMPERATURE: not found
+/root/silvia-pi/server.py: 23: /root/silvia-pi/server.py: power_is_on: not found
+/root/silvia-pi/server.py: 24: /root/silvia-pi/server.py: force_power_on: not found
+/root/silvia-pi/server.py: 25: /root/silvia-pi/server.py: auto_run: not found
+/root/silvia-pi/server.py: 26: /root/silvia-pi/server.py: auto_run_hour: not found
+/root/silvia-pi/server.py: 27: /root/silvia-pi/server.py: auto_run_minute: not found
+/root/silvia-pi/server.py: 29: /root/silvia-pi/server.py: Syntax error: "(" unexpected
