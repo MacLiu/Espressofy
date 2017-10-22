@@ -27,21 +27,12 @@ def he_control_loop(dummy,state):
         GPIO.output(conf.he_pin,0)
         sleep(1)
       else:
-        if avgpid >= 100 :
-          state['heating'] = True
-          GPIO.output(conf.he_pin,1)
-          sleep(1)
-        elif avgpid > 0 and avgpid < 100:
-          state['heating'] = True
-          GPIO.output(conf.he_pin,1)
-          sleep(avgpid/100.)
-          GPIO.output(conf.he_pin,0)
-          sleep(1-(avgpid/100.))
-          state['heating'] = False
-        else:
-          GPIO.output(conf.he_pin,0)
-          state['heating'] = False
-          sleep(1)
+        state['heating'] = True
+        GPIO.output(conf.he_pin,1)
+        sleep((avgpid/100.) * 1.2)
+        GPIO.output(conf.he_pin,0)
+        sleep(1.2-(avgpid/100.))
+        state['heating'] = False
 
   finally:
     GPIO.output(conf.he_pin,0)
@@ -51,19 +42,21 @@ def pid_loop(dummy,state):
   import sys
   from time import sleep, time
   from math import isnan
+  from pid import PID
   import Adafruit_GPIO.SPI as SPI
   import Adafruit_MAX31855.MAX31855 as MAX31855
-  import PID as PID
   import config as conf
 
   def c_to_f(c):
     return c * 9.0 / 5.0 + 32.0
 
+  def f_to_c(f):
+    return (f - 32) * (5.0 / 9.0)
+
   sensor = MAX31855.MAX31855(spi=SPI.SpiDev(conf.spi_port, conf.spi_dev))
 
-  pid = PID.PID(conf.Pc,conf.Ic,conf.Dc)
-  pid.SetPoint = state['settemp']
-  pid.setSampleTime(conf.sample_time*5)
+  pid = PID(conf.Pc,conf.Ic,conf.Dc)
+  pid.setSetPoint(f_to_c(state['settemp']))
 
   nanct=0
   i=0
@@ -92,52 +85,26 @@ def pid_loop(dummy,state):
         nanct = 0
 
       tempf = c_to_f(tempc)
-      temphist[i%5] = tempf
-      avgtemp = sum(temphist)/len(temphist)
 
-      if avgtemp < 100 :
-        lastcold = i
+      pid_output = pid.update(float(tempc))
+      temp_pid_output = pid_output
 
-      if avgtemp > 200 :
-        lastwarm = i
-
-      if iscold and (i-lastcold)*conf.sample_time > 60*15 :
-        pid = PID.PID(conf.Pw,conf.Iw,conf.Dw)
-        pid.SetPoint = state['settemp']
-        pid.setSampleTime(conf.sample_time*5)
-        iscold = False
-
-      if iswarm and (i-lastwarm)*conf.sample_time > 60*15 : 
-        pid = PID.PID(conf.Pc,conf.Ic,conf.Dc)
-        pid.SetPoint = state['settemp']
-        pid.setSampleTime(conf.sample_time*5)
-        iscold = True
-
-      if state['settemp'] != lastsettemp :
-        pid.SetPoint = state['settemp']
-        lastsettemp = state['settemp']
-
-      if i%10 == 0 :
-        pid.update(avgtemp)
-        pidout = pid.output
-        pidhist[i/10%10] = pidout
-        avgpid = sum(pidhist)/len(pidhist)
+      if temp_pid_output > 100:
+        temp_pid_output = 100
+      elif temp_pid_output < 0:
+        temp_pid_output = 0
 
       state['i'] = i
       state['tempf'] = round(tempf,2)
-      state['avgtemp'] = round(avgtemp,2)
-      state['pidval'] = round(pidout,2)
-      state['avgpid'] = round(avgpid,2)
-      state['pterm'] = round(pid.PTerm,2)
-      if iscold :
-        state['iterm'] = round(pid.ITerm * conf.Ic,2)
-        state['dterm'] = round(pid.DTerm * conf.Dc,2)
-      else :
-        state['iterm'] = round(pid.ITerm * conf.Iw,2)
-        state['dterm'] = round(pid.DTerm * conf.Dw,2)
-      state['iscold'] = iscold
+      state['avgtemp'] = round(tempf,2)
+      state['pidval'] = round(pid_output,2)
+      state['avgpid'] = round(int(temp_pid_output),2)
+      state['pterm'] = round(conf.Pc,2)
+      state['iterm'] = round(conf.Ic,2)
+      state['dterm'] = round(conf.Dc,2)
+      state['iscold'] = iscold;
 
-      print time(), state
+      print state;
 
       sleeptime = lasttime+conf.sample_time-time()
       if sleeptime < 0 :
@@ -179,7 +146,7 @@ def rest_server(dummy,state):
   def post_settemp():
     try:
       settemp = float(request.forms.get('settemp'))
-      if settemp >= 200 and settemp <= 260 :
+      if settemp >= 160 and settemp <= 280 :
         state['settemp'] = settemp
         return str(settemp)
       else:
