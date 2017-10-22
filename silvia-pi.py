@@ -1,42 +1,54 @@
 #!/usr/bin/python
 
-def update_temperature(state, sensor):
-  import  threading
+class EspressoTemperatureControl():
 
-  current_temp = sensor.tempC();
-  state['tempf'] = (9.0 / 5.0) * current_temp + 32
-  threading.Timer(.5, update_temperature(state, sensor)).start()
+  def __init__(self, state, sensor, heaterController, pid):
+    self.state = state
+    self.sensor = sensor
+    self.heaterController = heaterController
+    self.pid = pid
 
-def pid_loop(dummy, state, heaterController, pid):
+  def main(self):
+    self.update_temperature(self)
+    self.pid_loop(self)
 
-  def c_to_f(c):
-    return c * 9.0 / 5.0 + 32.0
+  def update_temperature(self):
+    import  threading
 
-  def f_to_c(f):
-    return (f - 32) * (5.0 / 9.0)
+    current_temp = self.sensor.tempC();
+    self.state['tempf'] = (9.0 / 5.0) * current_temp + 32
+    threading.Timer(.5, self.update_temperature).start()
 
-  while True : # Loops 10x/second
-    tempf = state['tempf']
-    tempc = f_to_c(tempf);
+  def pid_loop(self):
 
-    pid_output = pid.update(float(tempc))
-    temp_pid_output = pid_output
+    def c_to_f(c):
+      return c * 9.0 / 5.0 + 32.0
 
-    if temp_pid_output > 100:
-      temp_pid_output = 100
-    elif temp_pid_output < 0:
-      temp_pid_output = 0
+    def f_to_c(f):
+      return (f - 32) * (5.0 / 9.0)
 
-    state['avgpid'] = pid_output
-    state['pidval'] = temp_pid_output
-    print('Updating PID with: ' + str(state['avgpid']))
-    print('PID Output:        ' + str(pid_output))
-    print('PID Output Fixed: ' + str(int(temp_pid_output)))
-    heaterController.controllerUpdate(int(temp_pid_output), 0.8333)
+    while True : # Loops 10x/second
+      tempf = self.state['tempf']
+      tempc = f_to_c(tempf);
 
-    threading.Timer(0.4266666, pid_loop(1,state,heaterController)).start()
+      pid_output = self.pid.update(float(tempc))
+      temp_pid_output = pid_output
 
-def rest_server(dummy,state):
+      if temp_pid_output > 100:
+        temp_pid_output = 100
+      elif temp_pid_output < 0:
+        temp_pid_output = 0
+
+      self.state['avgpid'] = pid_output
+      self.state['pidval'] = temp_pid_output
+      print('Updating PID with: ' + str(self.state['avgpid']))
+      print('PID Output:        ' + str(pid_output))
+      print('PID Output Fixed: ' + str(int(temp_pid_output)))
+      heaterController.controllerUpdate(int(temp_pid_output), 0.8333)
+
+      threading.Timer(0.4266666, self.pid_loop).start()
+
+def rest_server(state):
   from bottle import route, run, get, post, request, static_file, abort
   from subprocess import call
   from datetime import datetime
@@ -119,7 +131,7 @@ if __name__ == '__main__':
   from multiprocessing import Process, Manager
   import config as conf
   import threading
-  import RPi as GPIO
+  import RPi.GPIO as GPIO
   from pid import PID
   import Adafruit_MAX31855.MAX31855 as MAX31855
   import Adafruit_GPIO.SPI as SPI
@@ -129,24 +141,24 @@ if __name__ == '__main__':
   GPIO.setup(conf.he_pin, GPIO.OUT)
   GPIO.output(conf.he_pin, 0)
 
-  sensor = MAX31855.MAX31855(spi=SPI.SpiDev(conf.spi_port, conf.spi_dev))
-  heaterController = HeaterController(conf.he_pin)
-  pid = PID(conf.Pc, conf.Ic, conf.Dc)
-
   manager = Manager()
   pidstate = manager.dict()
   pidstate['snooze'] = conf.snooze 
   pidstate['snoozeon'] = False
   pidstate['i'] = 0
   pidstate['settemp'] = conf.set_temp
+  pidstate['tempf'] = 0.0
   pidstate['avgpid'] = 0.
+
+  sensor = MAX31855.MAX31855(spi=SPI.SpiDev(conf.spi_port, conf.spi_dev))
+  heaterController = HeaterController(conf.he_pin)
 
   pid = PID(conf.Pc, conf.Ic, conf.Dc)
   pid.setSetPoint((pidstate['settemp'] - 32) * 5.0 / 9.0)
 
-  pid_loop(1, pidstate, heaterController, pid)
-  update_temperature(pidstate, sensor)
+  espressoTemperatureController = EspressoTemperatureControl(pidstate, sensor, heaterController, pid)
+  espressoTemperatureController.main()
 
-  r = Process(target=rest_server,args=(1,pidstate))
+  r = Process(target=rest_server,args=(pidstate))
   r.daemon = True
   r.start()
