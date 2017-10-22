@@ -104,13 +104,13 @@ setInterval(function() {
         pterm.append(new Date().getTime(), resp.pterm);
         iterm.append(new Date().getTime(), resp.iterm);
         dterm.append(new Date().getTime(), resp.dterm);
-        pidval.append(new Date().getTime(), resp.pidval);
+        pidval.append(new Date().getTime(), resp.avgpid);
         avgpid.append(new Date().getTime(), resp.avgpid);
         $("#curtemp").html(resp.tempf.toFixed(2));
         $("#pterm").html(resp.pterm.toFixed(2));
         $("#iterm").html(resp.iterm.toFixed(2));
         $("#dterm").html(resp.dterm.toFixed(2));
-        $("#pidval").html(resp.pidval.toFixed(2));
+        $("#pidval").html(resp.avgpid.toFixed(2));
         $("#avgpid").html(resp.avgpid.toFixed(2));
       },
       complete: function () {
