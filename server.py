@@ -14,7 +14,7 @@ class EspressoTemperatureControl():
         GPIO.setup(26, GPIO.OUT)
         GPIO.output(26, 0)
 
-        self.power_is_on = True
+        self.power_is_on = False
         self.auto_run = False
         self.setTemp = 105
         self.calibrationOffset = 0  # Added to thermocouple output.
@@ -36,13 +36,9 @@ class EspressoTemperatureControl():
     def start_pid(self):
         import threading
 
-        if self.heaterPIDStarted == False:
-            self.heaterController.controllerUpdate(0, 0.8333)
-            self.heaterPIDStarted = True
-
-        #self.power_update()
-
-        if self.power_is_on == True:
+	if self.power_is_on == False:
+	    self.heaterController.controllerUpdate(0,0.83333)
+        elif self.power_is_on == True:
             self.pid_output = self.pid.update(float(self.boilerTemp))
             temp_pid_output = self.pid_output
 
@@ -56,10 +52,7 @@ class EspressoTemperatureControl():
             print('PID Output Fixed: ' + str(int(temp_pid_output)))
             self.heaterController.controllerUpdate(int(temp_pid_output), 0.8333)
 
-            threading.Timer(0.4266666, self.start_pid).start()
-        elif self.power_is_on == False:
-            # 0 sets the heat controller to off because of the sleep times
-            self.heaterController.controllerUpdate(0, 0.8333)
+        threading.Timer(0.4266666, self.start_pid).start()
 
     def update_temperature(self):
         import threading
@@ -122,7 +115,8 @@ class EspressoTemperatureControl():
                 settemp = float(request.forms.get('settemp'))
                 if settemp >= 160 and settemp <= 280:
                     self.setTemp = fahrenheit_to_celcius(settemp)
-                    return str(settemp)
+                    self.pid.setSetPoint(self.setTemp)
+		    return str(settemp)
                 else:
                     abort(400, 'Set temp out of range 200-260.')
             except:
@@ -131,6 +125,14 @@ class EspressoTemperatureControl():
         @get('/snooze')
         def get_snooze():
             return str(self.auto_run)
+
+	@post('/power')
+	def post_power():
+	    power = request.forms.get('power')
+            if power == 'true':
+                self.power_is_on = True
+            else:
+                self.power_is_on = False
 
         @post('/snooze')
         def post_snooze():

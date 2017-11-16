@@ -6,17 +6,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="icon" sizes="240x240" href="./icon.png">
-    <title>CySpresso</title>
+    <title>ClassicPi</title>
     <link rel="stylesheet" href="./css/bootstrap.css">
     <link rel="stylesheet" href="./css/bootstrap-theme.css">
+    <link rel="stylesheet" href="./bootstrap-switch/dist/css/bootstrap3/bootstrap-switch.css">
     <script type="text/javascript" src="./js/smoothie.js"></script>
     <script type="text/javascript" src="./js/jquery.js"></script>
     <script type="text/javascript" src="./js/bootstrap.js"></script>
     <script type="text/javascript" src="./js/index.js"></script>
+    <script type="text/javascript" src="./bootstrap-switch/dist/js/bootstrap-switch.js"></script>
   </head>
   <body>
   <div class="container">
-    <h1><img src="icon.png" height=35 width=35 style="vertical-align:top" />CySpresso <small>Dashboard</small></h1>
+    <h1><img src="icon.png" height=35 width=35 style="vertical-align:top" />ClassicPi <small>Dashboard</small></h1>
     <div class="center-block">
       <div id="fullrow" class="row">
         <div class="col-xs-12">
@@ -30,6 +32,13 @@
       </div>
       <hr>
       <div class="row">
+       <div class="col-xs-3">
+        <form class="form-inline" onsubmit="return false">
+         <div class="form-group">
+	  <input type="checkbox" id="boilerSwitch" unchecked>
+         </div>
+       </form>
+      </div>
         <div class="col-xs-4">
           <form class="form-inline" onsubmit="return false">
             <div class="form-group">
@@ -41,16 +50,6 @@
             </div>
          </form>
        </div>
-        <div class="col-xs-5">
-          <form class="form-inline" onsubmit="return false">
-            <div class="form-group">
-              <label for="inputSnooze">Wakeup Timer: </label>
-              <input type="time" class="form-control" id="inputSnooze" style="width:120px">
-              <button id="btnSnooze" class="btn btn-primary" style="display:none">Snooze</button>
-              <button id="btnSnoozeC" class="btn btn-danger" style="display:none">Cancel Snooze</button>
-            </div>
-          </form>
-        </div>
         <div class="col-xs-3">
           <form class="form-inline" onsubmit="return false">
             <div class="form-group">

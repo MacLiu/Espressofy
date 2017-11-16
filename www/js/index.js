@@ -16,7 +16,6 @@ function refreshinputs() {
     timeout: 500,
     success: function ( resp ) {
       $("#inputSetTemp").val( resp.settemp );
-      $("#inputSnooze").val( resp.snooze );
     }
   });
 }
@@ -61,27 +60,24 @@ $(document).ready(function(){
     $(".adv").toggle();
   });
 
-  refreshinputs();
-
+  refreshinputs();  
   $("#inputSetTemp").change(function(){
     $.post(
       "/settemp", 
       { settemp: $("#inputSetTemp").val() } 
     );
   });
-
-  $("#btnSnooze").click(function(){
-    $.post("/snooze",{ snooze: $("#inputSnooze").val() });
-    $("#btnSnooze").hide();
-    $("#btnSnoozeC").show();
+  $('#boilerSwitch').bootstrapSwitch({
+  onSwitchChange: function (event, state) {
+    event.preventDefault()
+    $.post(
+	"/power",
+	{ power: state}
+	);
+    return console.log(state, event.isDefaultPrevented())   
+    }
   });
-
-  $("#btnSnoozeC").click(function(){
-    $.post("/resetsnooze");
-    $("#btnSnooze").show();
-    $("#btnSnoozeC").hide();
-  });
-
+  
 });
 
 setInterval(function() {
@@ -90,13 +86,6 @@ setInterval(function() {
       url: "/allstats",
       timeout: 500,
       success: function ( resp ) {
-        if (resp.snoozeon == true) {
-          $("#btnSnooze").hide();
-          $("#btnSnoozeC").show();
-        } else {
-          $("#btnSnooze").show();
-          $("#btnSnoozeC").hide();
-        }
         curtemp.append(new Date().getTime(), resp.tempf);
         settemp.append(new Date().getTime(), resp.settemp);
         settempm.append(new Date().getTime(), resp.settemp-4);
